@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
@@ -21,6 +22,8 @@ namespace SudokuAutoTest
         private Dictionary<string, string> _repoMapTable;
         //存放Git仓库的根目录
         private string _rootDir;
+        //Github日志文件的名称
+        private string _loggerFile;
 
         public GitRepoHandler(string rootDir)
         {
@@ -28,6 +31,7 @@ namespace SudokuAutoTest
             _blogMapTable = new Dictionary<string, string>();
             _repoMapTable = new Dictionary<string, string>();
             _rootDir = rootDir;
+            _loggerFile = Path.Combine(Program.LogDir, "git.log");
         }
 
         public void PreProcess(string htmlFile)
@@ -47,7 +51,7 @@ namespace SudokuAutoTest
             CloneRepos();
         }
 
-        //Overview:从博客总获取仓库的地址
+        //Overview:从博客获取仓库的地址
         public void GetRepoUrlFromBlog()
         {
             HttpClient client = new HttpClient();
@@ -56,12 +60,13 @@ namespace SudokuAutoTest
                 string numberID = key;
                 //Fetch content from blog
                 string blogUrl = _blogMapTable[numberID];
-                HttpResponseMessage response = client.GetAsync(new Uri(blogUrl)).Result;
-                string blogContent = response.Content.ReadAsStringAsync().Result;
-                //Match github pattern in html content
                 try
                 {
-                    Regex regex = new Regex($"{_gitMapTable[key]}.+?(?=(\"|\\s))");
+                    var uri = new Uri(blogUrl);
+                    HttpResponseMessage response = client.GetAsync(uri).Result;
+                    string blogContent = response.Content.ReadAsStringAsync().Result;
+                    //Match github pattern in html content
+                    Regex regex = new Regex($"{_gitMapTable[key]}.+?(?=(\"|\\s|<|/tree/))", RegexOptions.IgnoreCase);
                     Match match = regex.Match(blogContent);
                     if (match.Success)
                     {
@@ -76,7 +81,6 @@ namespace SudokuAutoTest
             }
         }
 
-
         public void RecordRepoMapFile()
         {
             using (var writer = new StreamWriter(Program.RepoFile))
@@ -89,7 +93,7 @@ namespace SudokuAutoTest
         }
         //Requires:RepoMapTable不为空
         //Effects:在_rootDir下Clone学生的项目仓库
-        public void CloneRepos()
+        public void CloneRepos(bool rewrittern = false)
         {
             //Load file to repo map
             string[] lines = File.ReadAllLines(Program.RepoFile);
@@ -99,28 +103,37 @@ namespace SudokuAutoTest
                 _repoMapTable[param[0]] = param[1];
             }
 
-            foreach (var key in _repoMapTable.Keys)
+            Parallel.ForEach(_repoMapTable.Keys, key =>
             {
-                string githubUrl = _repoMapTable[key];
-                string clonePath = Path.Combine(_rootDir, key);
-                //移动Repo到对应学号目录下
-                if (Directory.Exists(clonePath))
-                {
-                    TimeSpan ts = DateTime.UtcNow - new DateTime(1970, 1, 1, 0, 0, 0, 0);
-                    var timeStr = Convert.ToInt64(ts.TotalSeconds).ToString();
-                    Directory.Move(clonePath, Path.Combine(_rootDir, key+"-"+timeStr));
-                }
                 try
                 {
-                    Repository.Clone(githubUrl, clonePath);
+                    string githubUrl = _repoMapTable[key];
+                    string clonePath = Path.Combine(_rootDir, key);
+                    //移动Repo到对应学号目录下
+                    if (Directory.Exists(clonePath) && !rewrittern)
+                    {
+                        Logger.Warning($"Project {clonePath} already exist, option is not rewrittern.", _loggerFile);
+                    }
+                    else
+                    {
+                        if (Directory.Exists(clonePath))
+                        {
+                            TimeSpan ts = DateTime.UtcNow - new DateTime(1970, 1, 1, 0, 0, 0, 0);
+                            var timeStr = Convert.ToInt64(ts.TotalSeconds).ToString();
+                            string newPath = Path.Combine(_rootDir, key + "-" + timeStr);
+                            Directory.Move(clonePath, newPath);
+                            Logger.Warning($"Project {clonePath} already exist. Move old one to {newPath}", _loggerFile);
+                        }
+                        Repository.Clone(githubUrl, clonePath);
+                        Thread.Sleep(1000);
+                    }
                 }
-                catch (Exception)
+                catch (Exception e)
                 {
-                    Repository.Clone(githubUrl, clonePath);
+                    Console.WriteLine($"Clone {key} Failed!\nMessage:{e.Message}");
                 }
-            }
+            });
         }
-
 
         //Overview:用于预处理的函数
         //Requires:从HTML文件中抽取学号对应的Github仓库地址
