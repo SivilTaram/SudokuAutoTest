@@ -72,10 +72,11 @@ namespace SudokuAutoTest
                     {
                         _repoMapTable[numberID] = match.Value;
                     }
+                    Logger.Info($"Grab {key} blog , get github link :{_repoMapTable[numberID]}", _loggerFile);
                 }
                 catch (Exception)
                 {
-                    // ignored
+                    Logger.Error($"Failed to fetch {numberID}'s blog, please check his blog again.", _loggerFile);
                 }
                 Thread.Sleep(1000);
             }
@@ -103,7 +104,7 @@ namespace SudokuAutoTest
                 _repoMapTable[param[0]] = param[1];
             }
 
-            Parallel.ForEach(_repoMapTable.Keys, key =>
+            foreach(var key in _repoMapTable.Keys)
             {
                 try
                 {
@@ -125,14 +126,15 @@ namespace SudokuAutoTest
                             Logger.Warning($"Project {clonePath} already exist. Move old one to {newPath}", _loggerFile);
                         }
                         Repository.Clone(githubUrl, clonePath);
+                        Logger.Info($"Project {clonePath} successfully cloned!", _loggerFile);
                         Thread.Sleep(1000);
                     }
                 }
                 catch (Exception e)
                 {
-                    Console.WriteLine($"Clone {key} Failed!\nMessage:{e.Message}");
+                    Logger.Error($"Clone {key} Failed!\nMessage:{e.Message}", _loggerFile);
                 }
-            });
+            }
         }
 
         //Overview:用于预处理的函数
