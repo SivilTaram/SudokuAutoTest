@@ -13,8 +13,7 @@ namespace SudokuAutoTest
     public class SudokuTester
     {
         private ProcessStartInfo _binaryInfo;
-        private string _binaryDir;
-        private string _logFile;
+        public string _logFile { get; }
         public string NumberId { get; }
         public List<Tuple<string, double>> Scores { get; }
 
@@ -22,14 +21,13 @@ namespace SudokuAutoTest
         {
             Scores = new List<Tuple<string, double>>();
             NumberId = numberId;
-            _binaryDir = Path.Combine(baseDir, NumberId, "BIN");
+            //Base dir
             _binaryInfo = new ProcessStartInfo
             {
                 WindowStyle = ProcessWindowStyle.Hidden,
                 CreateNoWindow = true,
-                FileName = Path.Combine(_binaryDir, "sudoku.exe"),
                 UseShellExecute = false,
-                WorkingDirectory = _binaryDir,
+                WorkingDirectory = Path.Combine(baseDir, NumberId),
                 RedirectStandardOutput = true
             };
             _logFile = Path.Combine(Program.LogDir, $"{numberId}-log.txt");
@@ -38,10 +36,14 @@ namespace SudokuAutoTest
         //If success,return time; Else, return "error message"
         public double ExecuteTest(string arguments, int timeLimit)
         {
-            if (!File.Exists(_binaryInfo.FileName))
+            if (!FindExePath(_binaryInfo))
             {
                 Logger.Error("No sudoku.exe file!", _logFile);
-                return (int)ErrorType.NoSudokuExe;
+                return (int) ErrorType.NoSudokuExe;
+            }
+            else
+            {
+                Console.WriteLine($"\nExe path: {_binaryInfo.FileName}");
             }
             _binaryInfo.Arguments = arguments;
             try
@@ -64,7 +66,7 @@ namespace SudokuAutoTest
                     }
                 }
                 //Check the sudoku file
-                string checkFile = Path.Combine(_binaryDir, "sudoku.txt");
+                string checkFile = Path.Combine(_binaryInfo.WorkingDirectory, "sudoku.txt");
                 if (!File.Exists(checkFile))
                 {
                     Logger.Info("No sudoku.txt file!", _logFile);
@@ -73,8 +75,8 @@ namespace SudokuAutoTest
                 var errorNum = CheckValid(checkFile, int.Parse(Regex.Match(arguments, @"\d+").Value));
                 if (errorNum > 0)
                 {
-                    Logger.Info($"Arguments:{arguments} Normal, spend time {timeWatch.Elapsed.Seconds}s", _logFile);
-                    return (double)timeWatch.Elapsed.Milliseconds / 1000;
+                    Logger.Info($"Arguments:{arguments} Normal, spend time {(double)timeWatch.ElapsedMilliseconds/1000}s", _logFile);
+                    return (double)timeWatch.ElapsedMilliseconds / 1000;
                 }
                 else
                 {
@@ -87,6 +89,46 @@ namespace SudokuAutoTest
                 Logger.Error($"Arguments:{arguments} RuntimeError:{e.Message}", _logFile);
                 return (int)ErrorType.RuntimeError;
             }
+        }
+
+        //Find exe file
+        public bool FindExePath(ProcessStartInfo binaryInfo)
+        {
+            string[] options = new[] {"BIN", "bin", "Bin"};
+            foreach (var option in options)
+            {
+                var exePath = Path.Combine(binaryInfo.WorkingDirectory, option, "sudoku.exe");
+                if (File.Exists(exePath))
+                {
+                    binaryInfo.FileName = exePath;
+                    binaryInfo.WorkingDirectory = new FileInfo(exePath).DirectoryName;
+                    return true;
+                }
+            }
+            //Find the binaryInfo's son directory to find it
+            string[] fileVariants = new[] {"sudoku.exe", "SudoKu.exe", "sudoku.exe"};
+            foreach (var fileVariant in fileVariants)
+            {
+                var exePaths = Directory.GetFiles(binaryInfo.WorkingDirectory, fileVariant, SearchOption.AllDirectories);
+                if (exePaths.Any())
+                {
+                    FileInfo info = new FileInfo(exePaths[0]);
+                    binaryInfo.FileName = exePaths[0];
+                    binaryInfo.WorkingDirectory = info.DirectoryName;
+                    return true;
+                }
+            }
+            //Match exe file
+            var anyExePaths = Directory.GetFiles(binaryInfo.WorkingDirectory, "exe", SearchOption.AllDirectories);
+            if (anyExePaths.Any())
+            {
+                FileInfo info = new FileInfo(anyExePaths[0]);
+                binaryInfo.FileName = anyExePaths[0];
+                binaryInfo.WorkingDirectory = info.DirectoryName;
+                return true;
+            }
+            //No file matched
+            return false;
         }
 
         //Overview:对可执行文件测试执行每一个测试点,得到每个点的运行时长或错误类别
@@ -130,6 +172,10 @@ namespace SudokuAutoTest
             var content = File.ReadAllText(filePath);
             string splitSymbol = Environment.NewLine + Environment.NewLine;
             var multipleLines = content.Split(new[] { splitSymbol }, StringSplitOptions.RemoveEmptyEntries);
+            if (multipleLines.Length == 1)
+            {
+                multipleLines = content.Split(new[] {"\n\n"}, StringSplitOptions.RemoveEmptyEntries);
+            }
             if (multipleLines.Any())
             {
                 foreach (var lines in multipleLines)

@@ -140,7 +140,6 @@ namespace SudokuAutoTest
         public static void ProcessScore()
         {
             //遍历每个学生的学号, 并计算其分数
-            List<SudokuTester> testList = new List<SudokuTester>();
             var lines = File.ReadAllLines(BlogFile);
             bool header = true;
             //Write file to txt
@@ -150,17 +149,24 @@ namespace SudokuAutoTest
                 {
                     string[] param = line.Split('\t');
                     SudokuTester tester = new SudokuTester(ProjectDir, param[0]);
-                    tester.GetCorrectScore();
-                    if (header)
+                    try
                     {
-                        var arguments = tester.Scores.Select(i => i.Item1).ToList();
-                        writer.Write("NumberID\t");
-                        writer.WriteLine(string.Join("\t", arguments));
-                        header = false;
+                        tester.GetCorrectScore();
+                        if (header)
+                        {
+                            var arguments = tester.Scores.Select(i => i.Item1).ToList();
+                            writer.Write("NumberID\t");
+                            writer.WriteLine(string.Join("\t", arguments));
+                            header = false;
+                        }
+                        writer.Write(tester.NumberId + "\t");
+                        writer.WriteLine(string.Join("\t", tester.Scores.Select(i => i.Item2)));
+                        writer.Flush();
                     }
-                    writer.Write(tester.NumberId + "\t");
-                    writer.WriteLine(string.Join("\t", tester.Scores.Select(i => i.Item2)));
-                    writer.Flush();
+                    catch (Exception e)
+                    {
+                        Logger.Error(e.Message, tester._logFile);
+                    }
                 }
             }
         }
