@@ -58,7 +58,9 @@ namespace SudokuAutoTest
                     //Release all resources
                     if (!exeProcess.HasExited)
                     {
+                        //Give system sometime to release resource
                         exeProcess.Kill();
+                        Thread.Sleep(1000);
                     }
                 }
                 //Check the sudoku file
@@ -132,20 +134,29 @@ namespace SudokuAutoTest
             {
                 foreach (var lines in multipleLines)
                 {
-                    var sudokuPanel =
-                        new SudokuPanel(
-                            lines.Split(new[] {Environment.NewLine}, StringSplitOptions.RemoveEmptyEntries), NumberId);
-                    if (sudokuSets.Contains(sudokuPanel))
+                    try
                     {
-                        Logger.Error("Sudoku.txt have repeated sudoku panels!", _logFile);
-                        return (int) ErrorType.RepeatedPanels;
+                        var sudokuPanel =
+                            new SudokuPanel(
+                                lines.Split(new[] {Environment.NewLine}, StringSplitOptions.RemoveEmptyEntries),
+                                NumberId);
+                        if (sudokuSets.Contains(sudokuPanel))
+                        {
+                            Logger.Error("Sudoku.txt have repeated sudoku panels!", _logFile);
+                            return (int) ErrorType.RepeatedPanels;
+                        }
+                        if (!sudokuPanel.Valid)
+                        {
+                            Logger.Error($"SudokuPanel Not Invalid:\n {sudokuPanel}", _logFile);
+                            return (int) ErrorType.SudokuPanelInvalid;
+                        }
+                        sudokuSets.Add(sudokuPanel);
                     }
-                    if (!sudokuPanel.Valid)
+                    catch (Exception e)
                     {
-                        Logger.Error($"SudokuPanel Not Invalid:\n {sudokuPanel}", _logFile);
-                        return (int) ErrorType.SudokuPanelInvalid;
+                        //the sudoku is not valid.
+                        break;
                     }
-                    sudokuSets.Add(sudokuPanel);
                 }
                 if (sudokuSets.Count == count)
                 {
