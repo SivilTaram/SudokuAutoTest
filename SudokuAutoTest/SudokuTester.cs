@@ -172,15 +172,14 @@ namespace SudokuAutoTest
                 //剩下10分,分为2组测试
                 //5万+
                 //100万+
-                argumentScoreMap = new[]
+                Scores.Add(new Tuple<string, double>("-c 50000", ExecuteTest("-c 50000", Program.MaxLimitTime)));
+                if (Scores.Last().Item2 > 0)
                 {
-                    "-c 50000",
-                    "-c 1000000"
-                };
-                foreach (var argument in argumentScoreMap)
+                    Scores.Add(new Tuple<string, double>("-c 1000000", ExecuteTest("-c 1000000", Program.MaxLimitTime)));
+                }
+                else
                 {
-                    //Limit is 600s
-                    Scores.Add(new Tuple<string, double>(argument, ExecuteTest(argument, Program.MaxLimitTime)));
+                    Scores.Add(new Tuple<string, double>("-c 1000000", (int)ErrorType.OutOfTimeCloseExe));
                 }
             }
             else
