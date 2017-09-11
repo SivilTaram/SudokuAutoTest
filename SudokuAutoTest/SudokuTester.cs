@@ -124,7 +124,7 @@ namespace SudokuAutoTest
                 }
             }
             //Find the binaryInfo's son directory to find it
-            string[] fileVariants = new[] {"sudoku.exe", "SudoKu.exe", "sudoku.exe"};
+            string[] fileVariants = new[] {"sudoku.exe", "SudoKu.exe", "SUDOKU.exe"};
             foreach (var fileVariant in fileVariants)
             {
                 var exePaths = Directory.GetFiles(binaryInfo.WorkingDirectory, fileVariant, SearchOption.AllDirectories);
@@ -137,7 +137,7 @@ namespace SudokuAutoTest
                 }
             }
             //Match exe file
-            var anyExePaths = Directory.GetFiles(binaryInfo.WorkingDirectory, "exe", SearchOption.AllDirectories);
+            var anyExePaths = Directory.GetFiles(binaryInfo.WorkingDirectory, "*.exe", SearchOption.AllDirectories);
             if (anyExePaths.Any())
             {
                 FileInfo info = new FileInfo(anyExePaths[0]);
