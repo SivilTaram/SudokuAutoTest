@@ -27,3 +27,17 @@
 ## 使用流程
 
 在实际使用时, 先使用 /grab 再直接使用 /score 即可。在 DEMO 中有已经编译好的版本，目前仅支持 Windows/.NET45 平台。
+
+## 结果说明
+
+在 /score 命令执行成功后，评分表 Score.txt 中会记录测试程序的成绩。如果该项为正值，即为该项测试花费的时间；如果该项为负值，即为出错。出错码对应表如下：
+
+- NoSudokuExe = -1,
+- NoGeneratedSudokuTxt = -2,
+- RuntimeError = -3,
+- RunOutOfTime = -5,
+- RepeatedPanels = -6,
+- SudokuPanelInvalid = -7,
+- NotEnoughCount = -8
+
+错误的细节与描述等均在 `{学号}-log.txt` 中可以找到，方便追查是程序原因还是学生自身的错误。
