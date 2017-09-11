@@ -72,6 +72,26 @@ namespace SudokuAutoTest
                     Logger.Info("No sudoku.txt file!", _logFile);
                     return (int)ErrorType.NoGeneratedSudokuTxt;
                 }
+                //如果不出现错误的话,则退出
+                int tryTimeLimit = 10;
+                while (tryTimeLimit > 0)
+                {
+                    try
+                    {
+                        File.ReadAllText(checkFile);
+                        break;
+                    }
+                    catch (Exception e)
+                    {
+                        Thread.Sleep(500);
+                        tryTimeLimit --;
+                    }
+                }
+                if (tryTimeLimit == 0)
+                {
+                    return (int) ErrorType.OutOfTimeCloseExe;
+                }
+                //获取错误代码
                 var errorNum = CheckValid(checkFile, int.Parse(Regex.Match(arguments, @"\d+").Value));
                 if (errorNum > 0)
                 {
@@ -309,7 +329,7 @@ namespace SudokuAutoTest
         NoSudokuExe = -1,
         NoGeneratedSudokuTxt = -2,
         RuntimeError = -3,
-        InvalidSudokuPanels = -4,
+        OutOfTimeCloseExe = -4,
         RunOutOfTime = -5,
         RepeatedPanels = -6,
         SudokuPanelInvalid = -7,
