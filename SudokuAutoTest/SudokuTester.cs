@@ -14,12 +14,13 @@ namespace SudokuAutoTest
     {
         private ProcessStartInfo _binaryInfo;
         private string _binaryDir;
+        private string _logFile;
         public string NumberId { get; }
-        public List<Tuple<string, int>> Scores { get; }
+        public List<Tuple<string, double>> Scores { get; }
 
-        public SudokuTester(string baseDir,string numberId)
+        public SudokuTester(string baseDir, string numberId)
         {
-            Scores = new List<Tuple<string, int>>();
+            Scores = new List<Tuple<string, double>>();
             NumberId = numberId;
             _binaryDir = Path.Combine(baseDir, NumberId, "BIN");
             _binaryInfo = new ProcessStartInfo
@@ -28,17 +29,18 @@ namespace SudokuAutoTest
                 CreateNoWindow = true,
                 FileName = Path.Combine(_binaryDir, "sudoku.exe"),
                 UseShellExecute = false,
-                WorkingDirectory = _binaryDir
+                WorkingDirectory = _binaryDir,
+                RedirectStandardOutput = true
             };
-            Trace.Listeners.Add(new TextWriterTraceListener(Path.Combine(_binaryDir, "log.txt")));
-            Trace.AutoFlush = true;
+            _logFile = Path.Combine(Program.LogDir, $"{numberId}-log.txt");
         }
 
         //If success,return time; Else, return "error message"
-        public int ExecuteTest(string arguments, int timeLimit)
+        public double ExecuteTest(string arguments, int timeLimit)
         {
             if (!File.Exists(_binaryInfo.FileName))
             {
+                Logger.Error("No sudoku.exe file!", _logFile);
                 return (int)ErrorType.NoSudokuExe;
             }
             _binaryInfo.Arguments = arguments;
@@ -50,53 +52,38 @@ namespace SudokuAutoTest
                 // Call WaitForExit and then the using statement will close.
                 using (Process exeProcess = Process.Start(_binaryInfo))
                 {
-                    //Cancel task
-                    var cancelTokenSource = new CancellationTokenSource(timeLimit * 1000);
-                    var task = Task.Factory.StartNew(() =>
-                    {
-                        //monitor the timeWatch
-                        while (!cancelTokenSource.IsCancellationRequested)
-                        {
-                            Thread.Sleep(1000);
-                        }
-                        //Release the resource of exe files.
-                        exeProcess.Close();
-                    }, cancelTokenSource.Token);
                     //Start monitor
-                    exeProcess.WaitForExit();
+                    exeProcess.WaitForExit(timeLimit * 1000);
                     timeWatch.Stop();
-                    if (task.Status == TaskStatus.Running)
+                    //Release all resources
+                    if (!exeProcess.HasExited)
                     {
-                        //Shutdown the task
-                        cancelTokenSource.Cancel();
-                    }
-                    //if task already being canceled
-                    else
-                    {
-                        return (int) ErrorType.RunOutOfTime;
+                        exeProcess.Kill();
                     }
                 }
                 //Check the sudoku file
                 string checkFile = Path.Combine(_binaryDir, "sudoku.txt");
                 if (!File.Exists(checkFile))
                 {
-                    return (int) ErrorType.NoGeneratedSudokuTxt;
+                    Logger.Info("No sudoku.txt file!", _logFile);
+                    return (int)ErrorType.NoGeneratedSudokuTxt;
                 }
-                var isCorrect = CheckValid(checkFile, int.Parse(Regex.Match(arguments, @"\d+").Value));
-                if (isCorrect)
+                var errorNum = CheckValid(checkFile, int.Parse(Regex.Match(arguments, @"\d+").Value));
+                if (errorNum > 0)
                 {
-                    return timeWatch.Elapsed.Seconds;
+                    Logger.Info($"Arguments:{arguments} Normal, spend time {timeWatch.Elapsed.Seconds}s", _logFile);
+                    return (double)timeWatch.Elapsed.Milliseconds / 1000;
                 }
                 else
                 {
-                    return (int) ErrorType.InvalidSudokuPanels;
+                    return errorNum;
                 }
             }
-            catch(Exception e)
+            catch (Exception e)
             {
                 //Log into file to record the runtime error
-                Trace.WriteLine($"Arguments:{arguments}\nRuntimeError:{e.Message}\n\n");
-                return (int) ErrorType.RuntimeError;
+                Logger.Error($"Arguments:{arguments} RuntimeError:{e.Message}", _logFile);
+                return (int)ErrorType.RuntimeError;
             }
         }
 
@@ -116,12 +103,12 @@ namespace SudokuAutoTest
             };
             foreach (var argument in argumentScoreMap)
             {
-                Scores.Add(new Tuple<string, int>(argument, ExecuteTest(argument, 60)));
+                Scores.Add(new Tuple<string, double>(argument, ExecuteTest(argument, 60)));
             }
             //剩下10分,分为2组测试
             //5万+
             //100万+
-            argumentScoreMap = new string[]
+            argumentScoreMap = new[]
             {
                 "-c 50000",
                 "-c 1000000"
@@ -129,31 +116,44 @@ namespace SudokuAutoTest
             foreach (var argument in argumentScoreMap)
             {
                 //Limit is 600s
-                Scores.Add(new Tuple<string, int>(argument, ExecuteTest(argument, 600)));
+                Scores.Add(new Tuple<string, double>(argument, ExecuteTest(argument, Program.MaxLimitTime)));
             }
         }
 
-        public bool CheckValid(string filePath, int count)
+        public int CheckValid(string filePath, int count)
         {
             //新申请一个数独棋盘
             var sudokuSets = new HashSet<SudokuPanel>();
             //从路径中读取相应内容
             var content = File.ReadAllText(filePath);
-            var multipleLines = content.Split(new [] {"\n\n"}, StringSplitOptions.RemoveEmptyEntries);
-            foreach (var lines in multipleLines)
+            string splitSymbol = Environment.NewLine + Environment.NewLine;
+            var multipleLines = content.Split(new[] { splitSymbol }, StringSplitOptions.RemoveEmptyEntries);
+            if (multipleLines.Any())
             {
-                var sudokuPanel = new SudokuPanel(lines.Split('\n'));
-                if (sudokuSets.Contains(sudokuPanel))
+                foreach (var lines in multipleLines)
                 {
-                    return false;
+                    var sudokuPanel =
+                        new SudokuPanel(
+                            lines.Split(new[] {Environment.NewLine}, StringSplitOptions.RemoveEmptyEntries), NumberId);
+                    if (sudokuSets.Contains(sudokuPanel))
+                    {
+                        Logger.Error("Sudoku.txt have repeated sudoku panels!", _logFile);
+                        return (int) ErrorType.RepeatedPanels;
+                    }
+                    if (!sudokuPanel.Valid)
+                    {
+                        Logger.Error($"SudokuPanel Not Invalid:\n {sudokuPanel}", _logFile);
+                        return (int) ErrorType.SudokuPanelInvalid;
+                    }
+                    sudokuSets.Add(sudokuPanel);
                 }
-                if (!sudokuPanel.Valid)
+                if (sudokuSets.Count == count)
                 {
-                    return false;
+                    return 1;
                 }
-                sudokuSets.Add(sudokuPanel);
             }
-            return sudokuSets.Count == count;
+            Logger.Error($"Sudoku.txt doesn't have engough sudoku panels! Except:{count} Actual:{sudokuSets.Count}", _logFile);
+            return (int)ErrorType.NotEnoughCount;
         }
     }
 
@@ -161,25 +161,52 @@ namespace SudokuAutoTest
     {
         public string[,] Grid { get; set; }
         public bool Valid { get; }
+        private string _numberID;
 
-        public SudokuPanel(string[] rows)
+        public SudokuPanel(string[] rows, string numberID)
         {
+            _numberID = numberID;
             int length = rows.Length;
-            Grid = new string[length,length];
+            Grid = new string[length, length];
             for (int rowIndex = 0; rowIndex < length; rowIndex++)
             {
                 var row = rows[rowIndex];
-                string[] columns = row.Split(null);
-                for (int colIndex = 0; colIndex < columns.Length; colIndex++)
+                string[] columns = row.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+                if (columns.Length > 0)
                 {
-                    Grid[rowIndex,colIndex] = columns[colIndex];
+                    for (int colIndex = 0; colIndex < length; colIndex++)
+                    {
+                        Grid[rowIndex, colIndex] = columns[colIndex];
+                    }
                 }
             }
             Valid = Validiate();
         }
 
+        public override string ToString()
+        {
+            StringBuilder build = new StringBuilder();
+            int length = Grid.GetLength(0);
+            for (int rowIndex = 0; rowIndex < length; rowIndex++)
+            {
+                for (int colIndex = 0; colIndex < length; colIndex++)
+                {
+                    build.Append(Grid[rowIndex, colIndex] + " ");
+                }
+                build.Append(Environment.NewLine);
+            }
+            return build.ToString();
+        }
+
         private bool Validiate()
         {
+            var lastChar = _numberID[_numberID.Length - 1];
+            var lastSecChar = _numberID[_numberID.Length - 2];
+            var validNum = (lastSecChar - '0' + lastChar - '0') % 9 + 1;
+            if(validNum != Grid[0, 0][0] - '0')
+            {
+                return false;
+            }
             int length = Grid.GetLength(0);
             bool[,] rowCheck = new bool[length, length];
             bool[,] colCheck = new bool[length, length];
@@ -188,10 +215,14 @@ namespace SudokuAutoTest
             {
                 for (int j = 0; j < Grid.GetLength(1); j++)
                 {
-                    if (!string.Equals(Grid[i, j],"0"))
+                    if (!string.Equals(Grid[i, j], "0"))
                     {
-                        int num = int.Parse(Grid[i, j]) - 1, k = i/3 * 3 + j/3;
-                        if (rowCheck[i,num] || colCheck[j,num] || squareCheck[k,num])
+                        if (Grid[i, j] == null)
+                        {
+                            return false;
+                        }
+                        int num = int.Parse(Grid[i, j]) - 1, k = i / 3 * 3 + j / 3;
+                        if (rowCheck[i, num] || colCheck[j, num] || squareCheck[k, num])
                         {
                             return false;
                         }
@@ -222,6 +253,9 @@ namespace SudokuAutoTest
         NoGeneratedSudokuTxt = -2,
         RuntimeError = -3,
         InvalidSudokuPanels = -4,
-        RunOutOfTime = -5
+        RunOutOfTime = -5,
+        RepeatedPanels = -6,
+        SudokuPanelInvalid = -7,
+        NotEnoughCount = -8
     }
 }
