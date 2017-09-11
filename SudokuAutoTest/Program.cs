@@ -48,7 +48,7 @@ namespace SudokuAutoTest
                             break;
                     }
                 }
-                CheckFileStatus();
+                CheckFileStatus(command);
                 switch (command)
                 {
                     case "/grab":
@@ -79,14 +79,25 @@ namespace SudokuAutoTest
                               "/score -blogPath [blog file] -limit [max limit second]\n" +
                               "\t- 本功能用于给学生的作业进行评分,并记录每份作业在不同测试数据下耗费的时间。最终生成的评分文件为 Scores.txt, 可直接复制到Excel中使用。\n\n" +
                               "\t- 文件 [blog file] 提供学号与作业地址的对应关系, 多行分开。如不指定该参数则默认为当前目录 BlogList.txt。\n\t每行的格式如: 031502334\thttp://cnblogs.com/easteast/p/1234.html 【分隔符为\\t】\n\n" +
-                              "\t- 数字 [limit second] 指定效率测试运行的最大时长, 默认为 600秒 ");
+                              "\t- 数字 [limit second] 指定效率测试运行的最大时长, 默认为 600秒 \n\n"+
+                              "在实际使用时, 先使用 /grab 再直接使用 /score即可");
         }
 
         //检查文件状态,确保文件存在
-        public static void CheckFileStatus()
+        public static void CheckFileStatus(string command)
         {
             ReCreateDir(LogDir);
-            ReCreateDir(ProjectDir);
+            if (command.Equals("/grab"))
+            {
+                ReCreateDir(ProjectDir);
+            }
+            else
+            {
+                if (!Directory.Exists(ProjectDir))
+                {
+                    throw new Exception($"当前目录下缺少 {ProjectDir} 仓库目录, 请先使用 /grab 功能生成后再使用评分！");
+                }
+            }
             if(!File.Exists(BlogFile))
             {
                 throw new Exception("作业文件路径不正确!");
