@@ -41,10 +41,7 @@ namespace SudokuAutoTest
                 Logger.Error("No sudoku.exe file!", _logFile);
                 return (int) ErrorType.NoSudokuExe;
             }
-            else
-            {
-                Console.WriteLine($"\nExe path: {_binaryInfo.FileName}");
-            }
+
             _binaryInfo.Arguments = arguments;
             try
             {
@@ -81,14 +78,15 @@ namespace SudokuAutoTest
                         File.ReadAllText(checkFile);
                         break;
                     }
-                    catch (Exception e)
+                    catch (Exception)
                     {
-                        Thread.Sleep(500);
+                        Thread.Sleep(100);
                         tryTimeLimit --;
                     }
                 }
                 if (tryTimeLimit == 0)
                 {
+                    Logger.Info("Exe run time out!", _logFile);
                     return (int) ErrorType.OutOfTimeCloseExe;
                 }
                 //获取错误代码
@@ -169,25 +167,43 @@ namespace SudokuAutoTest
             {
                 Scores.Add(new Tuple<string, double>(argument, ExecuteTest(argument, 60)));
             }
-            //剩下10分,分为2组测试
-            //5万+
-            //100万+
-            argumentScoreMap = new[]
+            if (Scores.Where(i => i.Item2 > 0).ToList().Count >= 4)
             {
-                "-c 50000",
-                "-c 1000000"
-            };
-            foreach (var argument in argumentScoreMap)
-            {
-                //Limit is 600s
-                Scores.Add(new Tuple<string, double>(argument, ExecuteTest(argument, Program.MaxLimitTime)));
+                //剩下10分,分为2组测试
+                //5万+
+                //100万+
+                argumentScoreMap = new[]
+                {
+                    "-c 50000",
+                    "-c 1000000"
+                };
+                foreach (var argument in argumentScoreMap)
+                {
+                    //Limit is 600s
+                    Scores.Add(new Tuple<string, double>(argument, ExecuteTest(argument, Program.MaxLimitTime)));
+                }
             }
+            else
+            {
+                foreach (var argument in new[]{
+                    "-c 50000",
+                    "-c 1000000"})
+                {
+                    Scores.Add(new Tuple<string, double>(argument, (int) ErrorType.CanNotDoEfficientTest));
+                }
+            }
+        }
+
+        //Get Hash Code
+        public static string GetHashCode(SudokuPanel obj)
+        {
+            return obj.ToString();
         }
 
         public int CheckValid(string filePath, int count)
         {
             //新申请一个数独棋盘
-            var sudokuSets = new HashSet<SudokuPanel>();
+            var sudokuSets = new HashSet<string>();
             //从路径中读取相应内容
             var content = File.ReadAllText(filePath);
             string splitSymbol = Environment.NewLine + Environment.NewLine;
@@ -206,7 +222,8 @@ namespace SudokuAutoTest
                             new SudokuPanel(
                                 lines.Split(new[] {Environment.NewLine}, StringSplitOptions.RemoveEmptyEntries),
                                 NumberId);
-                        if (sudokuSets.Contains(sudokuPanel))
+                        string hashCode = GetHashCode(sudokuPanel);
+                        if (sudokuSets.Contains(hashCode))
                         {
                             Logger.Error("Sudoku.txt have repeated sudoku panels!", _logFile);
                             return (int) ErrorType.RepeatedPanels;
@@ -216,7 +233,7 @@ namespace SudokuAutoTest
                             Logger.Error($"SudokuPanel Not Invalid:\n {sudokuPanel}", _logFile);
                             return (int) ErrorType.SudokuPanelInvalid;
                         }
-                        sudokuSets.Add(sudokuPanel);
+                        sudokuSets.Add(hashCode);
                     }
                     catch (Exception e)
                     {
@@ -234,7 +251,7 @@ namespace SudokuAutoTest
         }
     }
 
-    class SudokuPanel
+    public class SudokuPanel
     {
         public string[,] Grid { get; set; }
         public bool Valid { get; }
@@ -268,9 +285,8 @@ namespace SudokuAutoTest
             {
                 for (int colIndex = 0; colIndex < length; colIndex++)
                 {
-                    build.Append(Grid[rowIndex, colIndex] + " ");
+                    build.Append(Grid[rowIndex, colIndex]);
                 }
-                build.Append(Environment.NewLine);
             }
             return build.ToString();
         }
@@ -311,18 +327,6 @@ namespace SudokuAutoTest
         }
     }
 
-    class Comparator : IEqualityComparer<SudokuPanel>
-    {
-        public bool Equals(SudokuPanel x, SudokuPanel y)
-        {
-            return GetHashCode(x) == GetHashCode(y);
-        }
-
-        public int GetHashCode(SudokuPanel obj)
-        {
-            return string.Join("", obj.Grid).GetHashCode();
-        }
-    }
 
     public enum ErrorType
     {
@@ -333,6 +337,7 @@ namespace SudokuAutoTest
         RunOutOfTime = -5,
         RepeatedPanels = -6,
         SudokuPanelInvalid = -7,
-        NotEnoughCount = -8
+        NotEnoughCount = -8,
+        CanNotDoEfficientTest = -9
     }
 }
