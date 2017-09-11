@@ -35,10 +35,12 @@
 - NoSudokuExe = -1,
 - NoGeneratedSudokuTxt = -2,
 - RuntimeError = -3,
+- OutOfTimeCloseExe = -4,
 - RunOutOfTime = -5,
 - RepeatedPanels = -6,
 - SudokuPanelInvalid = -7,
-- NotEnoughCount = -8
+- NotEnoughCount = -8,
+- CanNotDoEfficientTest = -9
 
 错误的细节与描述等均在 `{学号}-log.txt` 中可以找到，方便追查是程序原因还是学生自身的错误。
 
