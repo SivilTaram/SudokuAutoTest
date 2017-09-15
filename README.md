@@ -6,15 +6,15 @@
 **命令行**：/grab -blogPath [blog file] -gitPath [git file]
 
 - 本功能用于从学生的作业中自动提取Github链接, 并将Git仓库Clone到文件夹 Projects 下, 错误日志在文件夹 Log 下, Github项目链接映射表在 RepoMap.txt 中。
-- **文件 [blog file] **提供学号与作业地址的对应关系, 多行分开。如不指定该参数则默认为当前目录 BlogList.txt。
+- **文件 [blog file]** 提供学号与作业地址的对应关系, 多行分开。如不指定该参数则默认为当前目录 BlogList.txt。
     每行的格式如: 031502334        http://cnblogs.com/easteast/p/1234.html 【分隔符为\t】
-- **文件 [git file] **提供学号与Github主页的对应关系, 多行分开。如不指定该参数则默认为当前目录 GithubRepos.txt。
+- **文件 [git file]** 提供学号与Github主页的对应关系, 多行分开。如不指定该参数则默认为当前目录 GithubRepos.txt。
     每行的格式如: 031502334        http://github.com/easteast 【分隔符为\t】
-- **文本 [score mode] **指定测试选用的模式，目前提供三种选择，如该参数不填则默认为s模式：
+- **文本 [score mode]** 指定测试选用的模式，目前提供三种选择，如该参数不填则默认为s模式：
     - **a** : 跳过当前 Projects目录下已有工程, 分析其他同学的博客 ,并将项目克隆到本地。
     - **w** : 将 Projects 文件夹重命名,爬取所有学生的博客并将项目克隆到 Projects文件夹下。
     - **s** : 已有正确测试结果的不再重新爬取，只测试存在错误情况的项目。
-- **学号 [number id] (可选参数) **提供单个学号, 当本参数存在时, 将只抓取单个同学的博客并重新克隆工程。
+- **学号 [number id] (可选参数)** 提供单个学号, 当本参数存在时, 将只抓取单个同学的博客并重新克隆工程。
 
 **使用示例**：SudoAutoTest.exe /grab -mode w
 
