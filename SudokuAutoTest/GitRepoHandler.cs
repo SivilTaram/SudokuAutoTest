@@ -73,13 +73,10 @@ namespace SudokuAutoTest
         //Overview:获取学号为NumberId的Github仓库
         public void GetOneGithubRepo(string numberId)
         {
-            if (!File.Exists(Program.RepoFile))
-            {
-                LoadBlogMap(Program.BlogFile);
-                LoadGithubMap(Program.GithubFile);
-                GetRepoUrlFromBlog(numberId);
-                RecordRepoMapFile(true, numberId);
-            }
+            LoadBlogMap(Program.BlogFile);
+            LoadGithubMap(Program.GithubFile);
+            GetRepoUrlFromBlog(numberId);
+            RecordRepoMapFile(true, numberId);
             CloneRepo(numberId);
         }
 

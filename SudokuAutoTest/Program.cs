@@ -306,7 +306,9 @@ namespace SudokuAutoTest
             //如果Score.txt存在,则读取其中内容,将其按照策略读取出来
             if (File.Exists(ResultFile))
             {
-                var existScores = File.ReadAllLines(ResultFile).Skip(1);
+                var allLines = File.ReadAllLines(ResultFile);
+                var headerLine = allLines.First();
+                var existScores = allLines.Skip(1);
                 //如果略过已经得到优异分数的同学,则对结果进行筛选
                 if (isSkipGreat)
                 {
@@ -314,6 +316,7 @@ namespace SudokuAutoTest
                     var writeLines = existScores.Where(i => !i.Contains("-")).ToArray();
                     using (StreamWriter writer = new StreamWriter(ResultFile, false))
                     {
+                        writer.WriteLine(headerLine);
                         foreach (var writeLine in writeLines)
                         {
                             writer.WriteLine(writeLine);
