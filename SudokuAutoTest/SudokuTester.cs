@@ -25,10 +25,8 @@ namespace SudokuAutoTest
             _binaryInfo = new ProcessStartInfo
             {
                 WindowStyle = ProcessWindowStyle.Hidden,
-                CreateNoWindow = true,
                 UseShellExecute = false,
-                WorkingDirectory = Path.Combine(baseDir, NumberId),
-                RedirectStandardOutput = true
+                WorkingDirectory = Path.Combine(baseDir, NumberId)
             };
             _logFile = Path.Combine(Program.LogDir, $"{numberId}-log.txt");
         }
