@@ -3,7 +3,7 @@
 
 ## 提取Github项目链接
 
-**命令行**：/grab -blogPath [blog file] -gitPath [git file]
+**命令行**：/grab -blogPath [blog file] -gitPath [git file] -mode [score mode] -number [number id]
 
 - 本功能用于从学生的作业中自动提取Github链接, 并将Git仓库Clone到文件夹 Projects 下, 错误日志在文件夹 Log 下, Github项目链接映射表在 RepoMap.txt 中。
 - **文件 [blog file]** 提供学号与作业地址的对应关系, 多行分开。如不指定该参数则默认为当前目录 BlogList.txt。
@@ -20,7 +20,7 @@
 
 ## 自动评测测试点时长
 
-**命令行**：/score -blogPath [blog file] -limit [max limit second]
+**命令行**：/score -blogPath [blog file] -limit [max limit second] -mode [score mode] -number [number id]
 
 - 本功能用于给学生的作业进行评分,并记录每份作业在不同测试数据下耗费的时间。最终生成的评分文件为 Scores.txt, 可直接复制到Excel中使用。
 - **文件 [blog file]** 提供学号与作业地址的对应关系, 多行分开。如不指定该参数则默认为当前目录 BlogList.txt。
