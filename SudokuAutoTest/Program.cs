@@ -29,7 +29,7 @@ namespace SudokuAutoTest
         public static int MaxLimitTime = 600;
         
         //Cover all students' score
-        public static string Mode = "s";
+        public static string ModeInput = "s";
 
         //For single mode
         public static string Number;
@@ -53,7 +53,7 @@ namespace SudokuAutoTest
                             MaxLimitTime = int.Parse(args[i]);
                             break;
                         case "-mode":
-                            Mode = args[i];
+                            ModeInput = args[i];
                             break;
                         case "-number":
                             Number = args[i];
@@ -104,37 +104,42 @@ namespace SudokuAutoTest
         {
             ReCreateDir(LogDir);
             //Grab 所有同学的博客并克隆项目
-            if (command.Equals("/grab") && Number == null)
+            if (command.Equals("/grab"))
             {
-                ReCreateDir(ProjectDir);
-            }
-            //Grab 指定学号的博客并克隆项目
-            else if (command.Equals("/grab"))
-            {
-                //如果没有 Projects 目录, 就创建一个
                 if (!Directory.Exists(ProjectDir))
                 {
+                    //如果没有 Projects 目录, 就创建一个
                     Directory.CreateDirectory(ProjectDir);
+                    //单个测试的情况下
+                    if (Number != null)
+                    {
+                        //如果已经有了项目目录, 就删除它
+                        var clonePath = Path.Combine(ProjectDir, Number);
+                        RemoveDir(clonePath);
+                    }
                 }
-                //如果已经有了项目目录, 就删除它
-                var clonePath = Path.Combine(ProjectDir, Number);
-                RemoveDir(clonePath);
+                else if (Number == null
+                    && ModeInput.Equals(Mode.Written)
+                    && Directory.Exists(ProjectDir))
+                {
+                    ReCreateDir(ProjectDir);
+                }
             }
             //Score 所有同学的项目
-            else if (command.Equals("/score") && Number == null)
+            else
             {
                 if (!Directory.Exists(ProjectDir))
                 {
                     throw new Exception($"当前目录下缺少 {ProjectDir} 仓库目录, 请先使用 /grab 功能生成后再使用评分！");
                 }
-            }
-            //Score 指定学号的项目
-            else
-            {
-                var clonePath = Path.Combine(ProjectDir, Number);
-                if (!Directory.Exists(clonePath))
+                //Score 指定学号的项目
+                if (Number != null)
                 {
-                    throw new Exception($"当前目录下缺少 {clonePath} 仓库目录, 请先使用 /grab -number {Number} 功能生成后再使用评分！");
+                    var clonePath = Path.Combine(ProjectDir, Number);
+                    if (!Directory.Exists(clonePath))
+                    {
+                        throw new Exception($"当前目录下缺少 {clonePath} 仓库目录, 请先使用 /grab -number {Number} 功能生成后再使用评分！");
+                    }
                 }
             }
             if (!File.Exists(BlogFile))
@@ -168,6 +173,7 @@ namespace SudokuAutoTest
         }
 
         //Overview: 间接删除目录 dirPath
+        //Require: 只能用于带学号场景
         public static void RemoveDir(string dirPath)
         {
             if (Directory.Exists(dirPath))
@@ -239,13 +245,15 @@ namespace SudokuAutoTest
         //测试全部程序,对所有程序自动打分
         public static void ProcessScore()
         {
-            //遍历每个学生的学号, 并计算其分数
-            var lines = File.ReadAllLines(BlogFile);
+            //挑选出需要测试的名单
+            var testList = ExtractTestList(File.ReadAllLines(BlogFile).Select(i => i.Split('\t')[0]).ToArray());
             bool header = true;
-            //Write file to txt
-            using (var writer = new StreamWriter(ResultFile, false))
+            //是否以追加形式写入文件,不用的测试结果用不同的header标识
+            var isAppend = !ModeInput.Equals(Mode.Written);
+            //把成绩写入文件,两次不同的测试结果以不同的header作为区分
+            using (var writer = new StreamWriter(ResultFile, isAppend))
             {
-                foreach (var line in lines)
+                foreach (var line in testList)
                 {
                     string[] param = line.Split('\t');
                     SudokuTester tester = new SudokuTester(ProjectDir, param[0]);
@@ -255,6 +263,7 @@ namespace SudokuAutoTest
                         if (header)
                         {
                             var arguments = tester.Scores.Select(i => i.Item1).ToList();
+                            writer.WriteLine();
                             writer.Write("NumberID\t");
                             writer.WriteLine(string.Join("\t", arguments));
                             header = false;
@@ -269,6 +278,53 @@ namespace SudokuAutoTest
                     }
                 }
             }
+        }
+
+        //Overview:挑选出需要测试的名单
+        public static IEnumerable<string> ExtractTestList(string[] allStudents)
+        {
+            switch (ModeInput)
+            {
+                //直接覆盖原先的评测结果
+                case Mode.Written:
+                    return allStudents;
+                //已有结果的不再进行评测,其他人的追加评测
+                case Mode.Append:
+                    var skipList = ExtractSkipList(false);
+                    return allStudents.Where(i => !skipList.Contains(i));
+                case Mode.SkipGreat:
+                    skipList = ExtractSkipList(true);
+                    return allStudents.Where(i => !skipList.Contains(i));
+                default:
+                    return allStudents;
+            }
+        }
+
+        //Overview:返回不需要测试的名单
+        public static IEnumerable<string> ExtractSkipList(bool isSkipGreat)
+        {
+            //如果Score.txt存在,则读取其中内容,将其按照策略读取出来
+            if (File.Exists(ResultFile))
+            {
+                var existScores = File.ReadAllLines(ResultFile).Skip(1);
+                //如果略过已经得到优异分数的同学,则对结果进行筛选
+                if (isSkipGreat)
+                {
+                    //不包含负数的字符串即不需要测试的名单
+                    var writeLines = existScores.Where(i => !i.Contains("-")).ToArray();
+                    using (StreamWriter writer = new StreamWriter(ResultFile, false))
+                    {
+                        foreach (var writeLine in writeLines)
+                        {
+                            writer.WriteLine(writeLine);
+                        }
+                    }
+                    return writeLines.Select(i => i.Split('\t')[0]);
+                }
+                return existScores.Select(i => i.Split('\t')[0]);
+            }
+            //否则没有不需要测试的名单
+            return new string[] {};
         }
     }
 
