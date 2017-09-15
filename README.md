@@ -10,8 +10,13 @@
     每行的格式如: 031502334        http://cnblogs.com/easteast/p/1234.html 【分隔符为\t】
 - 文件 [git file] 提供学号与Github主页的对应关系, 多行分开。如不指定该参数则默认为当前目录 GithubRepos.txt。
     每行的格式如: 031502334        http://github.com/easteast 【分隔符为\t】
+- 文本 [score mode] 指定测试选用的模式，目前提供三种选择，如该参数不填则默认为s模式：
+    - a : 跳过当前 Projects目录下已有工程, 分析其他同学的博客 ,并将项目克隆到本地。
+    - w : 将 Projects 文件夹重命名,爬取所有学生的博客并将项目克隆到 Projects文件夹下。
+    - s : 已有正确测试结果的不再重新爬取，只测试存在错误情况的项目。
+- 学号 [number id] (可选参数) 提供单个学号, 当本参数存在时, 将只抓取单个同学的博客并重新克隆工程。\n\n" +
 
-**使用示例**：SudoAutoTest.exe /grab
+**使用示例**：SudoAutoTest.exe /grab -mode w
 
 ## 自动评测测试点时长
 
@@ -21,8 +26,13 @@
 - 文件 [blog file] 提供学号与作业地址的对应关系, 多行分开。如不指定该参数则默认为当前目录 BlogList.txt。
 每行的格式如: 031502334 http://cnblogs.com/easteast/p/1234.html 【分隔符为\t】
 - 数字 [limit second] 指定效率测试运行的最大时长, 默认为 600秒
+- 文本 [score mode] 指定测试选用的模式，目前提供三种选择，如该参数不填则默认为s模式：
+    - a : 跳过当前已有评分,对其他同学进行测试,将结果追加写入score.txt中。
+    - w : 全部重新测试，生成新的score.txt文件。
+    - s : 已有正确测试结果的不再重新测试，只测试不正确的。
+- 学号 [number id] (可选参数) 提供单个学号, 当本参数存在时，将只测试单个同学的工程，并将结果存储至 `学号-score.txt` 中。\n\n"+
 
-**使用示例**：SudoAutoTest.exe /score
+**使用示例**：SudoAutoTest.exe /score -mode s
 
 ## 使用流程
 
@@ -43,8 +53,3 @@
 - CanNotDoEfficientTest = -9
 
 错误的细节与描述等均在 `{学号}-log.txt` 中可以找到，方便追查是程序原因还是学生自身的错误。
-
-## 注意事项
-
-- 第一次使用 /grab 命令时会生成一个 `RepoMap.txt` 的文件。后续再使用该命令不会重复爬取博客内容，所以如果是因为学生博客存在问题导致无法爬取项目，请删除 `RepoMap.txt`后重新运行。在 `git.log` 中可以看到哪位同学的博客中没有抓取到对应的项目。
-- 每一次使用 /grab 命令都会将上次的 `Projects` 和 `Log` 目录重命名并新建一个新的。如果需要合并两次项目的文件夹，请手动合并。
