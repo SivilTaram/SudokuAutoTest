@@ -113,7 +113,7 @@ namespace SudokuAutoTest
             string[] options = new[] {"BIN", "bin", "Bin"};
             foreach (var option in options)
             {
-                var exePath = Path.Combine(binaryInfo.WorkingDirectory, option, "sudoku.exe");
+                var exePath = new FileInfo(Path.Combine(binaryInfo.WorkingDirectory, option, "sudoku.exe")).FullName;
                 if (File.Exists(exePath))
                 {
                     binaryInfo.FileName = exePath;
