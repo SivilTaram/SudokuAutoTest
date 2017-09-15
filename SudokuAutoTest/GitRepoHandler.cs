@@ -41,14 +41,33 @@ namespace SudokuAutoTest
 
         public void GetAllGithubRepos()
         {
-            if (!File.Exists(Program.RepoFile))
-            {
-                LoadBlogMap(Program.BlogFile);
-                LoadGithubMap(Program.GithubFile);
-                GetRepoUrlFromBlogs();
-                RecordRepoMapFile(false);
-            }
+            LoadBlogMap(Program.BlogFile);
+            LoadGithubMap(Program.GithubFile);
+            GetRepoUrlFromBlogs(Program.ModeInput);
+            //Writtern的情况下会把现有的都移动到新的文件夹中,再克隆
+            var recordAppend = !Program.ModeInput.Equals(Mode.Written);
+            RecordRepoMapFile(recordAppend);
             CloneRepos();
+        }
+
+        //Overview:返回不需要再次抓取的学号名单
+        public IEnumerable<string> ExtractSkipList(bool isSkipGreat)
+        {
+            if (File.Exists(Program.ResultFile) && isSkipGreat)
+            {
+                var existScores = File.ReadAllLines(Program.ResultFile).Skip(1);
+                //如果略过已经得到优异分数的同学,则对结果进行筛选
+                //不包含负数的字符串即不需要测试的名单
+                var writeLines = existScores.Where(i => !i.Contains("-")).ToArray();
+                return writeLines.Select(i => i.Split('\t')[0]);
+            }
+            if (Directory.Exists(Program.ProjectDir))
+            {
+                //返回已有的子文件夹的名字
+                var existProjects = Directory.GetDirectories(Program.ProjectDir).Select(i => new FileInfo(i).Name);
+                return existProjects;
+            }
+            return new string[] {};
         }
 
         //Overview:获取学号为NumberId的Github仓库
@@ -61,12 +80,24 @@ namespace SudokuAutoTest
                 GetRepoUrlFromBlog(numberId);
                 RecordRepoMapFile(true, numberId);
             }
-            CloneRepo(numberId, true);
+            CloneRepo(numberId);
         }
 
         //Overview:从博客获取仓库的地址
-        public void GetRepoUrlFromBlogs()
+        public void GetRepoUrlFromBlogs(string modeInput)
         {
+            //只要不是完全覆盖,就要从blogMapTable中移除keys
+            if (!modeInput.Equals(Mode.Written))
+            {
+                var isSkipGreat = modeInput.Equals(Mode.SkipGreat);
+                foreach (var numberId  in ExtractSkipList(isSkipGreat))
+                {
+                    if (_blogMapTable.ContainsKey(numberId))
+                    {
+                        _blogMapTable.Remove(numberId);
+                    }
+                }
+            }
             foreach (var key in _blogMapTable.Keys)
             {
                 //Fetch content from blog
@@ -92,11 +123,15 @@ namespace SudokuAutoTest
                 {
                     _repoMapTable[numberId] = match.Value;
                 }
+                else
+                {
+                    throw new Exception();
+                }
                 Logger.Info($"Grab {numberId} blog , get github link :{_repoMapTable[numberId]}", _loggerFile);
             }
             catch (Exception)
             {
-                Logger.Error($"Failed to fetch {numberId}'s blog, please check his blog again.", _loggerFile);
+                Logger.Error($"Student {numberId}'s blog doesn't have a github repo, please check his blog agian.", _loggerFile);
             }
         }
 
@@ -125,7 +160,7 @@ namespace SudokuAutoTest
         
         //Requires:RepoMapTable不为空
         //Effects:在_rootDir下Clone学生的项目仓库
-        public void CloneRepos(bool rewrittern = false)
+        public void CloneRepos()
         {
             //Load file to repo map
             string[] lines = File.ReadAllLines(Program.RepoFile);
@@ -138,7 +173,7 @@ namespace SudokuAutoTest
             {
                 try
                 {
-                    CloneRepo(key, rewrittern);
+                    CloneRepo(key);
                 }
                 catch (Exception e)
                 {
@@ -147,33 +182,25 @@ namespace SudokuAutoTest
             }
         }
 
-
         //Overview:克隆单个学生的项目
-        public void CloneRepo(string numberId, bool rewrittern)
+        public void CloneRepo(string numberId)
         {
             if (_repoMapTable.Keys.Contains(numberId))
             {
                 string githubUrl = _repoMapTable[numberId];
                 string clonePath = Path.Combine(_rootDir, numberId);
-                //移动Repo到对应学号目录下
-                if (!(Directory.Exists(clonePath) && !rewrittern))
+                //如果该文件夹已经存在,则重命名
+                if (Directory.Exists(clonePath))
                 {
-                    if (Directory.Exists(clonePath))
-                    {
-                        TimeSpan ts = DateTime.UtcNow - new DateTime(1970, 1, 1, 0, 0, 0, 0);
-                        var timeStr = Convert.ToInt64(ts.TotalSeconds).ToString();
-                        string newPath = Path.Combine(_rootDir, numberId + "-" + timeStr);
-                        Directory.Move(clonePath, newPath);
-                        Logger.Warning($"Project {clonePath} already exist. Move old one to {newPath}", _loggerFile);
-                    }
-                    Repository.Clone(githubUrl, clonePath);
-                    Logger.Info($"Project {clonePath} successfully cloned!", _loggerFile);
-                    Thread.Sleep(1000);
+                    TimeSpan ts = DateTime.UtcNow - new DateTime(1970, 1, 1, 0, 0, 0, 0);
+                    var timeStr = Convert.ToInt64(ts.TotalSeconds).ToString();
+                    string newPath = Path.Combine(_rootDir, numberId + "-" + timeStr);
+                    Directory.Move(clonePath, newPath);
+                    Logger.Warning($"Project {clonePath} already exist. Move old one to {newPath}", _loggerFile);
                 }
-            }
-            else
-            {
-                Logger.Warning($"Student {numberId}'s blog doesn't have a github repo, please check his blog agian.", _loggerFile);
+                Repository.Clone(githubUrl, clonePath);
+                Logger.Info($"Project {clonePath} successfully cloned!", _loggerFile);
+                Thread.Sleep(1000);
             }
         }
 
