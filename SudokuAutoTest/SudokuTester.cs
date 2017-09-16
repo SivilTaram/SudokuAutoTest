@@ -261,7 +261,8 @@ namespace SudokuAutoTest
             Grid = new string[length, length];
             for (int rowIndex = 0; rowIndex < length; rowIndex++)
             {
-                var row = rows[rowIndex];
+                //Remove invalid whitespaces.
+                var row = Regex.Replace(rows[rowIndex], @"\p{Z}", " ");
                 string[] columns = row.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
                 if (columns.Length > 0)
                 {
