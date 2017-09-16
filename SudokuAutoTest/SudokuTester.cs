@@ -129,7 +129,7 @@ namespace SudokuAutoTest
                 if (exePaths.Any())
                 {
                     FileInfo info = new FileInfo(exePaths[0]);
-                    binaryInfo.FileName = exePaths[0];
+                    binaryInfo.FileName = info.FullName;
                     binaryInfo.WorkingDirectory = info.DirectoryName;
                     return true;
                 }
@@ -139,7 +139,7 @@ namespace SudokuAutoTest
             if (anyExePaths.Any())
             {
                 FileInfo info = new FileInfo(anyExePaths[0]);
-                binaryInfo.FileName = anyExePaths[0];
+                binaryInfo.FileName = info.FullName;
                 binaryInfo.WorkingDirectory = info.DirectoryName;
                 return true;
             }
