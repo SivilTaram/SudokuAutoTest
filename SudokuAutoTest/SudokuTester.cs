@@ -243,7 +243,7 @@ namespace SudokuAutoTest
                     return 1;
                 }
             }
-            Logger.Error($"Sudoku.txt doesn't have engough sudoku panels! Except:{count} Actual:{sudokuSets.Count}", _logFile);
+            Logger.Error($"Sudoku.txt doesn't have engough sudoku panels! Expect:{count} Actual:{sudokuSets.Count}", _logFile);
             return (int)ErrorType.NotEnoughCount;
         }
     }

@@ -128,7 +128,7 @@ namespace SudokuAutoTest
             }
             catch (Exception)
             {
-                Logger.Error($"Student {numberId}'s blog doesn't have a github repo, please check his blog agian.", _loggerFile);
+                Logger.Error($"Student {numberId}'s blog doesn't have a github repo, please check his blog again.", _loggerFile);
             }
         }
 
@@ -170,7 +170,11 @@ namespace SudokuAutoTest
             {
                 try
                 {
-                    CloneRepo(key);
+                    //只有要测试的才会克隆
+                    if (_blogMapTable.ContainsKey(key))
+                    {
+                        CloneRepo(key);
+                    }
                 }
                 catch (Exception e)
                 {
