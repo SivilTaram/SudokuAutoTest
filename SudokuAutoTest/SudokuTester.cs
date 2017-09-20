@@ -16,10 +16,12 @@ namespace SudokuAutoTest
         public string _logFile { get; }
         public string NumberId { get; }
         public List<Tuple<string, double>> Scores { get; }
+        public List<Tuple<string, string>> Wrongs { get; }
 
         public SudokuTester(string baseDir, string numberId)
         {
             Scores = new List<Tuple<string, double>>();
+            Wrongs = new List<Tuple<string, string>>();
             NumberId = numberId;
             //Base dir
             _binaryInfo = new ProcessStartInfo
@@ -31,8 +33,56 @@ namespace SudokuAutoTest
             _logFile = Path.Combine(Program.LogDir, $"{numberId}-log.txt");
         }
 
+        public string ExecuteWrongTest(string arguments, int timeLimit)
+        {
+            if (!FindExePath(_binaryInfo))
+            {
+                return "No sudoku.exe file!";
+            }
+            _binaryInfo.Arguments = arguments;
+            _binaryInfo.RedirectStandardOutput = true;
+            _binaryInfo.RedirectStandardError = true;
+            try
+            {
+                using (Process exeProcess = Process.Start(_binaryInfo))
+                {
+                    StringBuilder sb = new StringBuilder();
+                    Action<object, DataReceivedEventArgs> actionWrite = (sender, e) =>
+                    {
+                        sb.Append(e.Data);
+                    };
+                    exeProcess.OutputDataReceived += (sender, e) => actionWrite(sender, e);
+                    exeProcess.ErrorDataReceived += (sender, e) => actionWrite(sender, e);
+
+                    exeProcess.BeginOutputReadLine();
+                    exeProcess.BeginErrorReadLine();
+                    exeProcess.WaitForExit(timeLimit * 1000);
+
+                    //Release all resources
+                    if (!exeProcess.HasExited)
+                    {
+                        //Give system sometime to release resource
+                        exeProcess.Kill();
+                        Thread.Sleep(1000);
+                    }
+                    if (sb.Length == 0)
+                    {
+                        return "No Information";
+                    }
+                    else
+                    {
+                        return sb.ToString();
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                return "The process terminated. Wrong!";
+            }
+        }
+
         //If success,return time; Else, return "error message"
-        public double ExecuteTest(string arguments, int timeLimit)
+        public double ExecuteCorrectTest(string arguments, int timeLimit)
         {
             if (!FindExePath(_binaryInfo))
             {
@@ -147,6 +197,24 @@ namespace SudokuAutoTest
             return false;
         }
 
+        //Overview:对可执行文件测试执行每一个测试点,得到输出的信息
+        public void GetWrongScore()
+        {
+            string[] argumentScoreMap = new string[]
+            {
+                "-c",
+                "-c -100",
+                "-abc 1",
+                " ",
+                "-c -c 1"
+            };
+            foreach (var argument in argumentScoreMap)
+            {
+                Wrongs.Add(new Tuple<string, string>(argument, ExecuteWrongTest(argument, 5)));
+            }
+
+        }
+
         //Overview:对可执行文件测试执行每一个测试点,得到每个点的运行时长或错误类别
         public void GetCorrectScore()
         {
@@ -163,17 +231,17 @@ namespace SudokuAutoTest
             };
             foreach (var argument in argumentScoreMap)
             {
-                Scores.Add(new Tuple<string, double>(argument, ExecuteTest(argument, 60)));
+                Scores.Add(new Tuple<string, double>(argument, ExecuteCorrectTest(argument, 60)));
             }
             if (Scores.Where(i => i.Item2 > 0).ToList().Count >= 4)
             {
                 //剩下10分,分为2组测试
                 //5万+
                 //100万+
-                Scores.Add(new Tuple<string, double>("-c 50000", ExecuteTest("-c 50000", Program.MaxLimitTime)));
+                Scores.Add(new Tuple<string, double>("-c 50000", ExecuteCorrectTest("-c 50000", Program.MaxLimitTime)));
                 if (Scores.Last().Item2 > 0)
                 {
-                    Scores.Add(new Tuple<string, double>("-c 1000000", ExecuteTest("-c 1000000", Program.MaxLimitTime)));
+                    Scores.Add(new Tuple<string, double>("-c 1000000", ExecuteCorrectTest("-c 1000000", Program.MaxLimitTime)));
                 }
                 else
                 {

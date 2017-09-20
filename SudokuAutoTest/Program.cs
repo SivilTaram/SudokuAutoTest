@@ -23,6 +23,7 @@ namespace SudokuAutoTest
 
         //Gen files
         public static string ResultFile = @"./Scores.txt";
+        public static string WrongFile = @"./Wrong.txt";
         public static string RepoFile = @"./RepoMap.txt";
 
         //Max Limit
@@ -68,6 +69,9 @@ namespace SudokuAutoTest
                         break;
                     case "/score":
                         ScoreRepos();
+                        break;
+                    case "/wrong":
+                        ProcessWrong();
                         break;
                     default:
                         throw new Exception("暂不支持此类型的参数!");
@@ -270,6 +274,43 @@ namespace SudokuAutoTest
                         }
                         writer.Write(tester.NumberId + "\t");
                         writer.WriteLine(string.Join("\t", tester.Scores.Select(i => i.Item2)));
+                        writer.Flush();
+                    }
+                    catch (Exception e)
+                    {
+                        Logger.Error(e.Message, tester._logFile);
+                    }
+                }
+            }
+        }
+
+        public static void ProcessWrong()
+        {
+            //挑选出需要测试的名单
+            var testList = ExtractTestList(File.ReadAllLines(BlogFile).Select(i => i.Split('\t')[0]).ToArray());
+            bool header = true;
+            //是否以追加形式写入文件,不用的测试结果用不同的header标识
+            var isAppend = !ModeInput.Equals(Mode.Written);
+            //把成绩写入文件,两次不同的测试结果以不同的header作为区分
+            using (var writer = new StreamWriter(WrongFile, isAppend))
+            {
+                foreach (var line in testList)
+                {
+                    string[] param = line.Split('\t');
+                    SudokuTester tester = new SudokuTester(ProjectDir, param[0]);
+                    try
+                    {
+                        tester.GetWrongScore();
+                        if (header)
+                        {
+                            var arguments = tester.Wrongs.Select(i => i.Item1).ToList();
+                            writer.WriteLine();
+                            writer.Write("NumberID\t");
+                            writer.WriteLine(string.Join("\t", arguments));
+                            header = false;
+                        }
+                        writer.Write(tester.NumberId + "\t");
+                        writer.WriteLine(string.Join("\t", tester.Wrongs.Select(i => i.Item2)));
                         writer.Flush();
                     }
                     catch (Exception e)

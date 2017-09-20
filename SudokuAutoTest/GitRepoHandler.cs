@@ -128,6 +128,7 @@ namespace SudokuAutoTest
             }
             catch (Exception)
             {
+                _repoMapTable[numberId] = "NULL";
                 Logger.Error($"Student {numberId}'s blog doesn't have a github repo, please check his blog again.", _loggerFile);
             }
         }
@@ -164,7 +165,10 @@ namespace SudokuAutoTest
             foreach (var line in lines)
             {
                 string[] param = line.Split('\t');
-                _repoMapTable[param[0]] = param[1];
+                if (!param[1].Equals("NULL"))
+                {
+                    _repoMapTable[param[0]] = param[1];
+                }
             }
             foreach(var key in _repoMapTable.Keys)
             {
