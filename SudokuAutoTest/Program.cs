@@ -81,7 +81,9 @@ namespace SudokuAutoTest
             catch (Exception e)
             {
                 Console.WriteLine(e.Message);
+                Console.WriteLine(e.StackTrace);
                 Hint();
+                Console.Read();
             }
         }
 

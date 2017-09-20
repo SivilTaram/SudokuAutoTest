@@ -240,8 +240,11 @@ namespace SudokuAutoTest
             var content = File.ReadAllLines(filePath);
             foreach (var line in content)
             {
-                var keyAndValue = line.Split(new char[] { '\t' });
-                _blogMapTable[keyAndValue[0]] = keyAndValue[1];
+                if (!string.IsNullOrEmpty(line))
+                {
+                    var keyAndValue = line.Split(new char[] {'\t'});
+                    _blogMapTable[keyAndValue[0]] = keyAndValue[1];
+                }
             }
         }
 
@@ -251,8 +254,11 @@ namespace SudokuAutoTest
             var content = File.ReadAllLines(filePath);
             foreach (var line in content)
             {
-                var keyAndValue = line.Split(new char[] { '\t' });
-                _gitMapTable[keyAndValue[0]] = keyAndValue[1];
+                if (!string.IsNullOrEmpty(line))
+                {
+                    var keyAndValue = line.Split(new char[] {'\t'});
+                    _gitMapTable[keyAndValue[0]] = keyAndValue[1];
+                }
             }
         }
     }
